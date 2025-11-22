@@ -4,3 +4,5 @@ twilio
 google-generativeai
 requests
 gunicorn
+numpy>=1.21.0
+scikit-learn>=1.0.0
