@@ -1,0 +1,300 @@
+{
+  "biomarkers": [
+    {
+      "id": "hemoglobin",
+      "name": "Hemoglobin",
+      "code": "HGB",
+      "unit": "g/dL",
+      "normal_range": {"min": 12.0, "max": 17.5},
+      "critical_low": 7.0,
+      "critical_high": 20.0,
+      "category": "hematology"
+    },
+    {
+      "id": "wbc_count",
+      "name": "White Blood Cell Count",
+      "code": "WBC",
+      "unit": "×10³/μL",
+      "normal_range": {"min": 4.0, "max": 11.0},
+      "critical_low": 2.0,
+      "critical_high": 30.0,
+      "category": "hematology"
+    },
+    {
+      "id": "platelet_count",
+      "name": "Platelet Count",
+      "code": "PLT",
+      "unit": "×10³/μL",
+      "normal_range": {"min": 150.0, "max": 400.0},
+      "critical_low": 50.0,
+      "critical_high": 1000.0,
+      "category": "hematology"
+    },
+    {
+      "id": "glucose",
+      "name": "Blood Glucose",
+      "code": "GLU",
+      "unit": "mg/dL",
+      "normal_range": {"min": 70.0, "max": 100.0},
+      "critical_low": 40.0,
+      "critical_high": 400.0,
+      "category": "metabolism"
+    },
+    {
+      "id": "creatinine",
+      "name": "Creatinine",
+      "code": "CREAT",
+      "unit": "mg/dL",
+      "normal_range": {"min": 0.6, "max": 1.3},
+      "critical_low": 0.3,
+      "critical_high": 15.0,
+      "category": "kidney"
+    },
+    {
+      "id": "bun",
+      "name": "Blood Urea Nitrogen",
+      "code": "BUN",
+      "unit": "mg/dL",
+      "normal_range": {"min": 7.0, "max": 20.0},
+      "critical_low": 2.0,
+      "critical_high": 100.0,
+      "category": "kidney"
+    },
+    {
+      "id": "sodium",
+      "name": "Sodium",
+      "code": "Na",
+      "unit": "mEq/L",
+      "normal_range": {"min": 135.0, "max": 145.0},
+      "critical_low": 120.0,
+      "critical_high": 160.0,
+      "category": "electrolytes"
+    },
+    {
+      "id": "potassium",
+      "name": "Potassium",
+      "code": "K",
+      "unit": "mEq/L",
+      "normal_range": {"min": 3.5, "max": 5.0},
+      "critical_low": 2.5,
+      "critical_high": 7.0,
+      "category": "electrolytes"
+    },
+    {
+      "id": "chloride",
+      "name": "Chloride",
+      "code": "Cl",
+      "unit": "mEq/L",
+      "normal_range": {"min": 96.0, "max": 106.0},
+      "critical_low": 80.0,
+      "critical_high": 120.0,
+      "category": "electrolytes"
+    },
+    {
+      "id": "calcium",
+      "name": "Calcium",
+      "code": "Ca",
+      "unit": "mg/dL",
+      "normal_range": {"min": 8.5, "max": 10.5},
+      "critical_low": 6.0,
+      "critical_high": 13.0,
+      "category": "electrolytes"
+    },
+    {
+      "id": "alt",
+      "name": "Alanine Aminotransferase",
+      "code": "ALT",
+      "unit": "U/L",
+      "normal_range": {"min": 7.0, "max": 56.0},
+      "critical_low": 0.0,
+      "critical_high": 1000.0,
+      "category": "liver"
+    },
+    {
+      "id": "ast",
+      "name": "Aspartate Aminotransferase",
+      "code": "AST",
+      "unit": "U/L",
+      "normal_range": {"min": 10.0, "max": 40.0},
+      "critical_low": 0.0,
+      "critical_high": 1000.0,
+      "category": "liver"
+    },
+    {
+      "id": "bilirubin_total",
+      "name": "Total Bilirubin",
+      "code": "TBIL",
+      "unit": "mg/dL",
+      "normal_range": {"min": 0.1, "max": 1.2},
+      "critical_low": 0.0,
+      "critical_high": 20.0,
+      "category": "liver"
+    },
+    {
+      "id": "albumin",
+      "name": "Albumin",
+      "code": "ALB",
+      "unit": "g/dL",
+      "normal_range": {"min": 3.5, "max": 5.5},
+      "critical_low": 2.0,
+      "critical_high": 6.0,
+      "category": "liver"
+    },
+    {
+      "id": "total_protein",
+      "name": "Total Protein",
+      "code": "TP",
+      "unit": "g/dL",
+      "normal_range": {"min": 6.0, "max": 8.3},
+      "critical_low": 4.0,
+      "critical_high": 10.0,
+      "category": "liver"
+    },
+    {
+      "id": "ldh",
+      "name": "Lactate Dehydrogenase",
+      "code": "LDH",
+      "unit": "U/L",
+      "normal_range": {"min": 140.0, "max": 280.0},
+      "critical_low": 0.0,
+      "critical_high": 2000.0,
+      "category": "cardiac"
+    },
+    {
+      "id": "troponin",
+      "name": "Cardiac Troponin I",
+      "code": "TnI",
+      "unit": "ng/mL",
+      "normal_range": {"min": 0.0, "max": 0.04},
+      "critical_low": 0.0,
+      "critical_high": 50.0,
+      "category": "cardiac"
+    },
+    {
+      "id": "bnp",
+      "name": "B-Type Natriuretic Peptide",
+      "code": "BNP",
+      "unit": "pg/mL",
+      "normal_range": {"min": 0.0, "max": 100.0},
+      "critical_low": 0.0,
+      "critical_high": 5000.0,
+      "category": "cardiac"
+    },
+    {
+      "id": "crp",
+      "name": "C-Reactive Protein",
+      "code": "CRP",
+      "unit": "mg/L",
+      "normal_range": {"min": 0.0, "max": 3.0},
+      "critical_low": 0.0,
+      "critical_high": 500.0,
+      "category": "inflammation"
+    },
+    {
+      "id": "esr",
+      "name": "Erythrocyte Sedimentation Rate",
+      "code": "ESR",
+      "unit": "mm/hr",
+      "normal_range": {"min": 0.0, "max": 20.0},
+      "critical_low": 0.0,
+      "critical_high": 100.0,
+      "category": "inflammation"
+    },
+    {
+      "id": "procalcitonin",
+      "name": "Procalcitonin",
+      "code": "PCT",
+      "unit": "ng/mL",
+      "normal_range": {"min": 0.0, "max": 0.05},
+      "critical_low": 0.0,
+      "critical_high": 100.0,
+      "category": "inflammation"
+    },
+    {
+      "id": "d_dimer",
+      "name": "D-Dimer",
+      "code": "DD",
+      "unit": "μg/mL",
+      "normal_range": {"min": 0.0, "max": 0.5},
+      "critical_low": 0.0,
+      "critical_high": 20.0,
+      "category": "coagulation"
+    },
+    {
+      "id": "inr",
+      "name": "International Normalized Ratio",
+      "code": "INR",
+      "unit": "ratio",
+      "normal_range": {"min": 0.8, "max": 1.2},
+      "critical_low": 0.5,
+      "critical_high": 10.0,
+      "category": "coagulation"
+    },
+    {
+      "id": "lactate",
+      "name": "Lactate",
+      "code": "LAC",
+      "unit": "mmol/L",
+      "normal_range": {"min": 0.5, "max": 2.2},
+      "critical_low": 0.0,
+      "critical_high": 20.0,
+      "category": "metabolism"
+    }
+  ],
+  "disease_categories": [
+    {
+      "id": "sepsis",
+      "name": "Sepsis",
+      "severity": "critical",
+      "description": "Systemic inflammatory response to infection"
+    },
+    {
+      "id": "cardiac_event",
+      "name": "Acute Cardiac Event",
+      "severity": "critical",
+      "description": "Myocardial infarction or acute heart failure"
+    },
+    {
+      "id": "renal_failure",
+      "name": "Acute Renal Failure",
+      "severity": "critical",
+      "description": "Sudden loss of kidney function"
+    },
+    {
+      "id": "liver_disease",
+      "name": "Liver Disease",
+      "severity": "high",
+      "description": "Hepatic dysfunction or failure"
+    },
+    {
+      "id": "metabolic_disorder",
+      "name": "Metabolic Disorder",
+      "severity": "moderate",
+      "description": "Glucose or electrolyte imbalance"
+    },
+    {
+      "id": "coagulopathy",
+      "name": "Coagulopathy",
+      "severity": "high",
+      "description": "Blood clotting disorder"
+    },
+    {
+      "id": "anemia",
+      "name": "Anemia",
+      "severity": "moderate",
+      "description": "Low hemoglobin or red blood cell count"
+    },
+    {
+      "id": "infection",
+      "name": "Infection",
+      "severity": "moderate",
+      "description": "Bacterial or viral infection"
+    },
+    {
+      "id": "normal",
+      "name": "Normal Range",
+      "severity": "low",
+      "description": "All biomarkers within normal limits"
+    }
+  ]
+}
