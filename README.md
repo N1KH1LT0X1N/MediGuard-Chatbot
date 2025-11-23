@@ -184,21 +184,6 @@ WhatsApp → Twilio → mediguard_bot.py
                   Secure Logger → Anonymized audit
 ```
 
-### Research Bot Flow
-```
-WhatsApp → Twilio → research_bot.py
-                        ↓
-                  Intent Detection → Command parsing
-                        ↓
-                  Session Manager → User state
-                        ↓
-                  Paper Search → Semantic Scholar/arXiv
-                        ↓
-                  Gemini AI → Summaries & Q&A
-                        ↓
-                  Formatter → WhatsApp response
-```
-
 ---
 
 ## 🧪 Testing
@@ -206,11 +191,6 @@ WhatsApp → Twilio → research_bot.py
 ### Test MediGuard AI
 ```bash
 pytest tests/test_mediguard.py -v
-```
-
-### Test Research Bot
-```bash
-pytest research-paper-bot/tests/ -v
 ```
 
 ### Run All Tests
@@ -235,13 +215,6 @@ gunicorn mediguard_bot:app
 # Using Docker
 docker build -t mediguard-ai .
 docker run -p 5000:5000 --env-file .env mediguard-ai
-```
-
-### Deploy Research Bot
-```bash
-# Update wsgi.py to use research_bot
-# Then deploy normally
-gunicorn wsgi:app
 ```
 
 ### Cloud Platforms
@@ -317,9 +290,6 @@ See [SECURITY.md](SECURITY.md) for details.
 
 **Not FDA approved.** Requires clinical validation.
 
-### Research Bot
-For educational and research purposes. Always verify information from primary sources and consult original papers for critical research.
-
 ---
 
 ## 🤝 Contributing
@@ -376,14 +346,6 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - [ ] EHR integration
 - [ ] Trend analysis over time
 - [ ] Clinical decision support algorithms
-
-### Research Bot
-- [ ] Multi-document comparison
-- [ ] Citation export (BibTeX, APA)
-- [ ] Voice note support
-- [ ] PDF upload and parsing
-- [ ] Collaborative study sessions
-- [ ] Spaced repetition learning
 
 ---
 
