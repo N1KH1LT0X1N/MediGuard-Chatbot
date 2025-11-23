@@ -1,14 +1,17 @@
 """
 MediGuard Utilities Package
-Security, logging, and formatting utilities.
+Security, logging, formatting, and media handling utilities.
 """
 
 from .security import anonymize_user_id, secure_logger
 from .formatters import format_prediction_response, format_biomarker_summary
+from .media_handler import MediaHandler, extract_media_from_twilio_request
 
 __all__ = [
     "anonymize_user_id",
     "secure_logger",
     "format_prediction_response",
     "format_biomarker_summary",
+    "MediaHandler",
+    "extract_media_from_twilio_request",
 ]

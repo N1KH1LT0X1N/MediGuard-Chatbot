@@ -781,54 +781,94 @@ def handle_qna(user_id: str, text: str) -> str:
 # Flask routes
 # ---------------------------
 
-@app.route("/")
-def root() -> str:
+@app.route("/", methods=["GET", "POST"])
+def root():
+    if request.method == "POST":
+        # Twilio is sending POST to / instead of /whatsapp
+        # Log the issue and return helpful error
+        print("⚠️ WARNING: Received POST request to / instead of /whatsapp")
+        print(f"   Request data: {dict(request.form)}")
+        return {
+            "error": "Webhook endpoint is /whatsapp, not /",
+            "message": "Please configure Twilio webhook URL to: https://your-domain.com/whatsapp",
+            "current_path": "/",
+            "correct_path": "/whatsapp"
+        }, 400
     return "Research Paper WhatsApp Bot is running."
+
+
+@app.route("/debug", methods=["GET", "POST"])
+def debug_endpoint():
+    """Debug endpoint to see incoming requests."""
+    return {
+        "method": request.method,
+        "path": request.path,
+        "url": request.url,
+        "form_data": dict(request.form),
+        "headers": dict(request.headers),
+        "message": "This is a debug endpoint. Webhook should be at /whatsapp"
+    }, 200
 
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
-    init_db()  # ensure tables exist
-    from_number = request.form.get("From", "")
-    body = request.form.get("Body", "").strip()
-    user_id = from_number or "unknown"
+    try:
+        init_db()  # ensure tables exist
+        from_number = request.form.get("From", "")
+        body = request.form.get("Body", "").strip()
+        user_id = from_number or "unknown"
 
-    log_message(user_id, "user", body)
-    sess = get_session(user_id)
+        print(f"📨 Received message from {user_id}: {body[:50]}...")
 
-    # Mode transitions
-    if is_qna_start(body):
-        update_session(user_id, mode="qna", qna_active=1, qna_index=0, qna_questions=json.dumps([]))
-        reply_text = handle_qna(user_id, body)
-    else:
-        mode = sess["mode"] or "browsing"
-        if mode == "qna":
+        log_message(user_id, "user", body)
+        sess = get_session(user_id)
+
+        # Mode transitions
+        if is_qna_start(body):
+            update_session(user_id, mode="qna", qna_active=1, qna_index=0, qna_questions=json.dumps([]))
             reply_text = handle_qna(user_id, body)
         else:
-            reply_text = handle_browsing(user_id, body)
+            mode = sess["mode"] or "browsing"
+            if mode == "qna":
+                reply_text = handle_qna(user_id, body)
+            else:
+                reply_text = handle_browsing(user_id, body)
 
-    log_message(user_id, "bot", reply_text)
+        log_message(user_id, "bot", reply_text)
 
-    # Split into chunks with continuation tags
-    def split_chunks(text: str, limit: int = 1500) -> List[str]:
-        lines = []
-        while text:
-            chunk = text[:limit]
-            text = text[limit:]
-            lines.append(chunk)
-        # add (1/2) tags if multiple chunks
-        if len(lines) > 1:
-            tagged = []
-            total = len(lines)
-            for i, c in enumerate(lines, 1):
-                tagged.append(f"({i}/{total})\n{c}")
-            return tagged
-        return lines
+        # Split into chunks with continuation tags
+        def split_chunks(text: str, limit: int = 1500) -> List[str]:
+            lines = []
+            while text:
+                chunk = text[:limit]
+                text = text[limit:]
+                lines.append(chunk)
+            # add (1/2) tags if multiple chunks
+            if len(lines) > 1:
+                tagged = []
+                total = len(lines)
+                for i, c in enumerate(lines, 1):
+                    tagged.append(f"({i}/{total})\n{c}")
+                return tagged
+            return lines
 
-    resp = MessagingResponse()
-    for part in split_chunks(reply_text):
-        resp.message(part)
-    return str(resp)
+        # Store chunks to avoid redundant computation
+        chunks = split_chunks(reply_text)
+        resp = MessagingResponse()
+        for part in chunks:
+            resp.message(part)
+        
+        print(f"✅ Sent response ({len(chunks)} chunk(s))")
+        return str(resp)
+    
+    except Exception as e:
+        print(f"❌ Error in whatsapp_webhook: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Return error response to Twilio
+        resp = MessagingResponse()
+        resp.message("❌ An error occurred processing your message. Please try again.")
+        return str(resp), 500
 
 
 if __name__ == "__main__":

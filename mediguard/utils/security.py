@@ -8,7 +8,7 @@ import json
 import os
 import sqlite3
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 
 def anonymize_user_id(user_id: str, salt: Optional[str] = None) -> str:
@@ -209,7 +209,7 @@ class SecureLogger:
         return sanitized
 
 
-def validate_input_security(user_input: str) -> tuple[bool, Optional[str]]:
+def validate_input_security(user_input: str) -> Tuple[bool, Optional[str]]:
     """
     Validate user input for security threats.
 

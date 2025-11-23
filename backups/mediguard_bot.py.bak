@@ -5,7 +5,6 @@ Clinical triage and prediction system via WhatsApp.
 
 import os
 import json
-import threading
 import re
 import sqlite3
 from datetime import datetime
@@ -663,21 +662,27 @@ def handle_query(query_text: str) -> str:
         return f"Error processing query: {str(e)}"
 
 
-def process_media_background(user_id: str, media_info: Dict[str, Any], request_form: Dict[str, Any]):
+def handle_media_upload(user_id: str, media_info: Dict[str, Any], request_form: Dict[str, Any]) -> str:
     """
-    Background task to process media and send results via Twilio API.
+    Handle media upload (PDF/image lab report).
+
+    Args:
+        user_id: WhatsApp user ID
+        media_info: Media information from Twilio
+        request_form: Full request form data
+
+    Returns:
+        TwiML response string
     """
-    print(f"\n[DEBUG] ========== process_media_background START ==========")
+    print(f"\n[DEBUG] ========== handle_media_upload START ==========")
     print(f"[DEBUG] User ID: {user_id}")
+    print(f"[DEBUG] Media Info: {media_info}")
     
-    # Determine the correct 'from' number (bot's number)
-    # We use the 'To' field from the incoming request to ensure we reply from the correct number
-    # This fixes issues where TWILIO_WHATSAPP_FROM might be misconfigured
-    bot_from_number = request_form.get("To", TWILIO_WHATSAPP_FROM)
-    print(f"[DEBUG] Using sender number: {bot_from_number}")
+    resp = MessagingResponse()
     
     try:
         # Log media upload
+        print(f"[DEBUG] Logging media upload event...")
         secure_logger.log_event(
             user_id,
             "media_upload_received",
@@ -691,26 +696,34 @@ def process_media_background(user_id: str, media_info: Dict[str, Any], request_f
         # Download media file
         media_url = media_info.get("media_url")
         if not media_url:
-            twilio_client.messages.create(
-                from_=bot_from_number,
-                to=user_id,
-                body="Error: Media URL not found in request."
-            )
-            return
+            print(f"[ERROR] media_url is missing from media_info!")
+            resp.message("Error: Media URL not found in request.")
+            return str(resp)
             
         media_content_type = media_info.get("media_content_type", "")
+        print(f"[DEBUG] Media URL: {media_url[:100]}...")
+        print(f"[DEBUG] Media Content Type: {media_content_type}")
         
         # Get file extension from content type
         file_extension = None
         if "pdf" in media_content_type.lower():
             file_extension = ".pdf"
         elif "image" in media_content_type.lower():
+            # Default to .jpg for images
             file_extension = ".jpg"
 
-        # Check if this is a URL-based upload
+        # Check if this is a URL-based upload (workaround for PDF limitations)
         is_url_upload = media_info.get("message_type") == "url"
         
-        # Download
+        if is_url_upload:
+            print(f"[INFO] Downloading from public URL (workaround for PDF upload)...")
+        else:
+            print(f"[INFO] Downloading media from Twilio...")
+            print(f"[DEBUG] Using Account SID: {TWILIO_ACCOUNT_SID[:10] if TWILIO_ACCOUNT_SID else 'None'}...")
+        
+        print(f"[DEBUG] File extension: {file_extension}")
+        
+        # For URL uploads, auth may not be needed (handled in download_media)
         file_path, error = media_handler.download_media(
             media_url,
             TWILIO_ACCOUNT_SID,
@@ -718,159 +731,234 @@ def process_media_background(user_id: str, media_info: Dict[str, Any], request_f
             file_extension=file_extension
         )
 
+        print(f"[DEBUG] Download result - File path: {file_path}, Error: {error}")
+
         if error or not file_path:
             print(f"[ERROR] Media download failed: {error}")
-            secure_logger.audit("media_download_failed", user_id, {"error": error})
+            print(f"[ERROR] Media URL was: {media_url[:200] if media_url else 'None'}...")
+            secure_logger.audit("media_download_failed", user_id, {"error": error, "url": media_url[:200] if media_url else None})
             
+            # Provide specific error message based on error type
             if error and "Google Drive" in error:
-                error_msg = error
+                error_msg = error  # Use the detailed Google Drive error message
             elif error and "HTML" in error:
-                error_msg = error
+                error_msg = error  # Use the HTML error message
             else:
                 error_msg = f"Failed to download: {error}"
             
-            twilio_client.messages.create(
-                from_=bot_from_number,
-                to=user_id,
-                body=f"{error_msg}\n\nPlease try:\n- For Google Drive: Share file with 'Anyone with the link'\n- Send a PDF or image file directly"
+            resp.message(
+                f"{error_msg}\n\n"
+                "Please try:\n"
+                "- For Google Drive: Share file with 'Anyone with the link'\n"
+                "- Send a PDF or image file directly\n"
+                "- Check file size (max 10MB)\n"
+                "- Or use 'template' command to enter values manually"
             )
-            return
+            print(f"[DEBUG] Returning error response to user")
+            return str(resp)
 
         # Validate file
         is_valid, validation_error = media_handler.is_valid_lab_report(file_path)
         if not is_valid:
             media_handler.cleanup_temp_file(file_path)
             secure_logger.audit("media_validation_failed", user_id, {"error": validation_error})
-            twilio_client.messages.create(
-                from_=bot_from_number,
-                to=user_id,
-                body=f"Invalid lab report file: {validation_error}\n\nSupported formats: PDF, JPG, PNG\nMax size: 10MB"
+            resp.message(
+                f"Invalid lab report file: {validation_error}\n\n"
+                "Supported formats: PDF, JPG, PNG\n"
+                "Max size: 10MB\n\n"
+                "Or use 'template' command to enter values manually."
             )
-            return
+            return str(resp)
 
-        # Process with OCR
+        # Process with OCR (Phase 2)
         file_info = media_handler.get_file_info(file_path)
+        print(f"[DEBUG] File info: {file_info}")
+        
         print(f"[INFO] Extracting text from lab report: {file_info['name']}")
 
+        # Extract text using OCR
         try:
+            print(f"[DEBUG] ========== STARTING OCR EXTRACTION ==========")
+            print(f"[DEBUG] File path: {file_path}")
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                print(f"[DEBUG] File size: {file_size} bytes")
+            else:
+                print(f"[ERROR] File does not exist: {file_path}")
+            
             ocr_result = ocr_engine.extract_text(file_path)
             ocr_text = ocr_result.get("text", "")
             ocr_method = ocr_result.get("method", "unknown")
 
+            print(f"[DEBUG] OCR Result:")
+            print(f"[DEBUG]   Method: {ocr_method}")
+            print(f"[DEBUG]   Text length: {len(ocr_text) if ocr_text else 0}")
+            print(f"[DEBUG]   First 200 chars: {ocr_text[:200] if ocr_text else '(empty)'}...")
+
             if not ocr_text or len(ocr_text.strip()) < 50:
                 media_handler.cleanup_temp_file(file_path)
                 secure_logger.audit("ocr_extraction_failed", user_id, {"method": ocr_method})
-                twilio_client.messages.create(
-                    from_=bot_from_number,
-                    to=user_id,
-                    body="Could not extract text from lab report.\n\nPlease try:\n- Send a clearer PDF/image\n- Ensure text is readable"
+                resp.message(
+                    "Could not extract text from lab report.\n\n"
+                    "Please try:\n"
+                    "- Send a clearer PDF/image\n"
+                    "- Ensure text is readable\n"
+                    "- Or use 'template' command to enter values manually"
                 )
-                return
+                return str(resp)
 
             print(f"[OK] OCR extraction successful ({ocr_method}): {len(ocr_text)} characters")
 
-            # Extract biomarker values
+            # Extract biomarker values from OCR text
+            print(f"[INFO] Extracting biomarker values...")
             biomarker_values, extraction_errors = biomarker_extractor.extract_from_text(ocr_text)
 
             if not biomarker_values:
                 media_handler.cleanup_temp_file(file_path)
-                secure_logger.audit("biomarker_extraction_failed", user_id, {"errors": extraction_errors})
-                twilio_client.messages.create(
-                    from_=bot_from_number,
-                    to=user_id,
-                    body=f"Could not extract biomarker values.\n\nErrors: {', '.join(extraction_errors[:3])}"
+                secure_logger.audit("biomarker_extraction_failed", user_id, {
+                    "ocr_method": ocr_method,
+                    "errors": extraction_errors
+                })
+                resp.message(
+                    "Could not extract biomarker values from lab report.\n\n"
+                    f"Errors: {', '.join(extraction_errors[:3])}\n\n"
+                    "Please try:\n"
+                    "- Send a clearer lab report\n"
+                    "- Or use 'template' command to enter values manually"
                 )
-                return
+                return str(resp)
 
+            # Count found biomarkers
             found_biomarkers = sum(1 for v in biomarker_values.values() if v is not None)
             missing_biomarkers = 24 - found_biomarkers
+
+            print(f"[OK] Extracted {found_biomarkers}/24 biomarkers")
+
+            # Filter out None values for processing
             valid_biomarkers = {k: v for k, v in biomarker_values.items() if v is not None}
 
             if len(valid_biomarkers) < 5:
                 media_handler.cleanup_temp_file(file_path)
-                twilio_client.messages.create(
-                    from_=bot_from_number,
-                    to=user_id,
-                    body=f"Too few biomarkers found ({found_biomarkers}/24).\n\nPlease send a complete lab report."
+                resp.message(
+                    f"Too few biomarkers found ({found_biomarkers}/24).\n\n"
+                    "Please try:\n"
+                    "- Send a complete lab report\n"
+                    "- Or use 'template' command to enter values manually"
                 )
-                return
+                return str(resp)
 
+            # Fill missing biomarkers with default values (normal range midpoints)
+            # This allows prediction to work with partial data
             complete_biomarkers = _fill_missing_biomarkers(valid_biomarkers)
             
-            # Process prediction
+            if missing_biomarkers > 0:
+                print(f"[WARN] Missing {missing_biomarkers} biomarkers, using defaults for missing values")
+
+            # Process prediction with complete biomarker set
+            print(f"[DEBUG] Calling handle_prediction_request with {len(complete_biomarkers)} biomarkers...")
             reply_text = handle_prediction_request(user_id, complete_biomarkers)
+            print(f"[DEBUG] handle_prediction_request returned text (length: {len(reply_text) if reply_text else 0})")
+            print(f"[DEBUG] First 200 chars of reply_text: {reply_text[:200] if reply_text else '(empty)'}...")
 
             if not reply_text or len(reply_text.strip()) == 0:
-                media_handler.cleanup_temp_file(file_path)
-                twilio_client.messages.create(
-                    from_=bot_from_number,
-                    to=user_id,
-                    body="Successfully extracted biomarkers, but prediction failed. Please try again."
+                print(f"[ERROR] handle_prediction_request returned empty or None response!")
+                resp.message(
+                    "Successfully extracted biomarkers, but prediction failed.\n\n"
+                    "Please try again or contact support."
                 )
-                return
+                media_handler.cleanup_temp_file(file_path)
+                return str(resp)
 
-            # Add extraction info
+            # Add extraction info to response
             extraction_info = f"*Extraction Summary:*\nFound: {found_biomarkers}/24 biomarkers\nMethod: {ocr_method.upper()}\n\n"
             if missing_biomarkers > 0:
                 extraction_info += f"Note: {missing_biomarkers} biomarkers not found, using normal range defaults.\n\n"
             
             full_reply = extraction_info + reply_text
-            
-            # Cleanup
+            print(f"[DEBUG] Full reply length: {len(full_reply)} characters")
+
+            # Cleanup temp file after processing
             media_handler.cleanup_temp_file(file_path)
 
-            # Send response via API
+            # Send response
             chunks = chunk_message(full_reply, max_length=1500)
-            for chunk in chunks:
-                twilio_client.messages.create(
-                    from_=bot_from_number,
-                    to=user_id,
-                    body=chunk
-                )
-            
-            print(f"[OK] Background processing complete. Sent {len(chunks)} chunks.")
+            print(f"[DEBUG] Message chunked into {len(chunks)} chunk(s)")
+            for i, chunk in enumerate(chunks):
+                print(f"[DEBUG] Adding chunk {i+1}/{len(chunks)} to response (length: {len(chunk)})")
+                resp.message(chunk)
+
+            print(f"[OK] Lab report processed successfully: {found_biomarkers}/24 biomarkers extracted")
+            print(f"[DEBUG] ========== handle_media_upload SUCCESS ==========")
+            print(f"[DEBUG] Final response length: {len(str(resp))} characters")
+            return str(resp)
 
         except Exception as e:
             print(f"[ERROR] Exception in OCR processing block: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
             if 'file_path' in locals() and file_path:
                 media_handler.cleanup_temp_file(file_path)
             
-            twilio_client.messages.create(
-                from_=bot_from_number,
-                to=user_id,
-                body=f"Error processing lab report: {str(e)[:100]}"
+            secure_logger.audit("ocr_processing_error", user_id, {
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "media_url": media_info.get("media_url", "")[:200] if media_info else None
+            })
+            
+            # Provide more specific error message
+            error_detail = str(e)
+            if "Gemini" in error_detail or "API" in error_detail:
+                error_msg = "OCR service error. Please try again or use 'template' command."
+            elif "Tesseract" in error_detail or "OCR" in error_detail:
+                error_msg = "Could not read text from image. Please send a clearer image or use 'template' command."
+            else:
+                error_msg = f"Processing error: {error_detail[:100]}"
+            
+            resp.message(
+                f"Error processing lab report: {error_msg}\n\n"
+                "Please try:\n"
+                "- Send a clearer PDF/image\n"
+                "- Ensure text is readable\n"
+                "- Or use 'template' command to enter values manually"
             )
+            print(f"[DEBUG] ========== handle_media_upload ERROR (OCR) ==========")
+            return str(resp)
 
     except Exception as e:
-        print(f"[ERROR] Exception in process_media_background: {str(e)}")
-        twilio_client.messages.create(
-            from_=bot_from_number,
-            to=user_id,
-            body="An error occurred processing your lab report."
+        print(f"[ERROR] Exception in handle_media_upload: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        error_type = type(e).__name__
+        error_msg = str(e)
+        media_url = media_info.get("media_url", "")[:200] if media_info else None
+        
+        secure_logger.audit("media_processing_error", user_id, {
+            "error": error_msg,
+            "error_type": error_type,
+            "media_url": media_url,
+            "media_type": media_info.get("message_type") if media_info else None
+        })
+        
+        # Provide more helpful error message
+        if "download" in error_msg.lower() or "connection" in error_msg.lower():
+            user_error = "Failed to download the file. Please check the URL is accessible."
+        elif "permission" in error_msg.lower() or "access" in error_msg.lower():
+            user_error = "File access denied. For Google Drive, share with 'Anyone with the link'."
+        else:
+            user_error = f"Error: {error_msg[:150]}"
+        
+        resp.message(
+            f"An error occurred processing your lab report.\n\n"
+            f"{user_error}\n\n"
+            "Please try:\n"
+            "- For Google Drive: Share file with 'Anyone with the link'\n"
+            "- Send a clearer PDF/image\n"
+            "- Or use 'template' command to enter values manually"
         )
-
-
-def handle_media_upload(user_id: str, media_info: Dict[str, Any], request_form: Dict[str, Any]) -> str:
-    """
-    Handle media upload by spawning a background thread.
-    Returns empty TwiML immediately to avoid timeouts.
-    """
-    print(f"[INFO] Starting background processing for media from {user_id}")
-    
-    # Start background thread
-    thread = threading.Thread(
-        target=process_media_background,
-        args=(user_id, media_info, request_form)
-    )
-    thread.daemon = True
-    thread.start()
-    
-    # Return empty TwiML to acknowledge receipt
-    # We can optionally send a "Processing..." message here if desired, 
-    # but for now we'll just let the background thread handle the response.
-    resp = MessagingResponse()
-    # resp.message("🔄 Processing your lab report... This may take a few seconds.")
-    return str(resp)
+        print(f"[DEBUG] ========== handle_media_upload ERROR (Outer) ==========")
+        return str(resp)
 
 
 # ---------------------------

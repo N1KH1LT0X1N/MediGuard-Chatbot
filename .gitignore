@@ -4,9 +4,15 @@
 
 # Database
 whatsapp_bot.db
+mediguard.db
 *.db
 *.sqlite
 *.sqlite3
+
+# Temporary media files (lab reports)
+mediguard_media/
+*.tmp
+temp_media/
 
 # Python
 __pycache__/
@@ -97,3 +103,7 @@ dmypy.json
 
 # Cython
 cython_debug/
+
+#niks ignore
+expense_analyzer
+research-paper-bot
