@@ -5,9 +5,16 @@
 ![Flask](https://img.shields.io/badge/flask-3.0+-lightgrey.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 
+> [!IMPORTANT]
+> **⚡ Wake Up the Bot First!**  
+> This app runs on Render's free tier which sleeps after inactivity.  
+> **Before messaging on WhatsApp**, visit this link to wake it up:  
+> 👉 **https://mediguard-whatsapp-bot.onrender.com**  
+> Wait ~30 seconds for the server to start, then message on WhatsApp.
+
 > A collection of AI-powered WhatsApp bots for research and healthcare
 
-This repository contains two powerful WhatsApp bots built with Flask and Google Gemini AI:
+This repository contains two powerful WhatsApp bots built with Flask and Groq AI:
 
 ---
 
@@ -120,7 +127,7 @@ Set webhook to: `https://your-ngrok-url.ngrok.io/whatsapp`
 ### Common Requirements
 - Python 3.9+
 - Twilio WhatsApp account
-- Google Gemini API key
+- Groq API key
 - Flask web server
 
 ### Additional for MediGuard AI
@@ -315,7 +322,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ## 🙏 Acknowledgments
 
 ### Technologies
-- [Google Gemini AI](https://ai.google.dev/) - Powerful AI capabilities
+- [Groq](https://groq.com/) - Ultra-fast AI inference
 - [Twilio](https://www.twilio.com/) - WhatsApp API
 - [Flask](https://flask.palletsprojects.com/) - Web framework
 - [NumPy](https://numpy.org/) & [scikit-learn](https://scikit-learn.org/) - ML libraries
