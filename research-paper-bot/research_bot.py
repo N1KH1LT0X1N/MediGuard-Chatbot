@@ -11,10 +11,12 @@ from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 
+import time
+
 try:
-    import google.generativeai as genai  # Optional; will be configured if GEMINI_API_KEY exists
-except Exception:  # pragma: no cover - optional dependency at runtime
-    genai = None  # type: ignore
+    from groq import Groq
+except ImportError:
+    Groq = None  # type: ignore
 
 
 # ---------------------------
@@ -24,7 +26,7 @@ except Exception:  # pragma: no cover - optional dependency at runtime
 load_dotenv()
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "whatsapp_bot.db")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GROQ_TEXT_MODEL = os.getenv("GROQ_TEXT_MODEL", "llama-3.3-70b-versatile")
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.5"))
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
@@ -43,13 +45,16 @@ if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
 
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
-# Configure Gemini if available
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY and genai is not None:
+# Configure Groq if available
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+groq_client = None
+if GROQ_API_KEY and Groq is not None:
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-    except Exception:
-        genai = None  # disable if config fails
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        print("[OK] Groq client initialized")
+    except Exception as e:
+        print(f"Warning: Groq init failed: {e}")
+        groq_client = None
 
 app = Flask(__name__)
 
@@ -285,18 +290,35 @@ def extract_query_from_text(text: str) -> str:
 
 
 # ---------------------------
-# AI helpers (Gemini optional)
+# AI helpers (Groq)
 # ---------------------------
 
-def gemini_generate_text(prompt: str, temperature: float = TEMPERATURE) -> Optional[str]:
-    if not (genai and GEMINI_API_KEY):
+def groq_generate_text(prompt: str, temperature: float = TEMPERATURE) -> Optional[str]:
+    """Generate text using Groq LLM with retry logic."""
+    if not groq_client:
         return None
-    try:
-        model = genai.GenerativeModel(GEMINI_MODEL)
-        resp = model.generate_content(prompt, generation_config={"temperature": temperature})
-        return getattr(resp, "text", "").strip() or None
-    except Exception:
-        return None
+    
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            resp = groq_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=GROQ_TEXT_MODEL,
+                temperature=temperature,
+            )
+            return resp.choices[0].message.content.strip() or None
+        except Exception as e:
+            status = getattr(e, 'status_code', None)
+            if status == 429 and attempt < max_retries - 1:
+                delay = 2 ** attempt
+                time.sleep(delay)
+                continue
+            return None
+    return None
+
+
+# Backward compatibility alias
+gemini_generate_text = groq_generate_text
 
 
 def summarize_paper(title: str, abstract: str, url: str, detailed: bool = False) -> str:

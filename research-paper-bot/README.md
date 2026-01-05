@@ -5,7 +5,7 @@
 ![Flask](https://img.shields.io/badge/flask-3.0+-lightgrey.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 
-> AI-powered WhatsApp bot for research paper search, Q&A, and structured summaries via Google Gemini.
+> AI-powered WhatsApp bot for research paper search, Q&A, and structured summaries via Groq AI.
 
 Lightweight Flask-based WhatsApp assistant that helps you discover, understand, and learn from research papers through conversational AI. Search papers from Semantic Scholar and arXiv, get structured summaries, and test your understanding with interactive Q&A.
 
@@ -20,7 +20,7 @@ Lightweight Flask-based WhatsApp assistant that helps you discover, understand, 
 - 📝 **Structured Summaries** - Auto-generated summaries with Introduction, Methodology, Results, and Conclusions
 - 💬 **Interactive Q&A** - Test your understanding with AI-generated questions
 - 📱 **WhatsApp Integration** - Natural conversation interface via Twilio
-- 🤖 **Google Gemini AI** - Powered by Gemini 2.5 Flash for intelligent responses
+- 🤖 **Groq AI** - Powered by Llama 3.3 70B for fast, intelligent responses
 - 💾 **Session Management** - SQLite-based conversation tracking
 - 🎯 **Intent Detection** - Smart command parsing and context awareness
 - 📊 **Progress Tracking** - Score your Q&A performance
@@ -28,7 +28,7 @@ Lightweight Flask-based WhatsApp assistant that helps you discover, understand, 
 ## 🛠️ Tech Stack
 
 - **Backend**: Python 3.9+, Flask
-- **AI**: Google Generative AI (Gemini 2.5 Flash)
+- **AI**: Groq (Llama 3.3 70B Versatile)
 - **Messaging**: Twilio WhatsApp API
 - **Database**: SQLite
 - **APIs**: Semantic Scholar Graph API, arXiv API
@@ -38,7 +38,7 @@ Lightweight Flask-based WhatsApp assistant that helps you discover, understand, 
 
 - Python 3.9+
 - Twilio account (WhatsApp sandbox or approved number)
-- Gemini API key (Generative AI API)
+- Groq API key (from console.groq.com)
 
 ## 🚀 Quick Start
 
@@ -63,8 +63,8 @@ Edit `.env` with your API keys:
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
 TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-2.5-flash
+GROQ_API_KEY=your_groq_api_key
+GROQ_TEXT_MODEL=llama-3.3-70b-versatile
 TEMPERATURE=0.5
 ```
 
@@ -211,7 +211,7 @@ Bot: Great! You covered key points.
 │  │  - Summary Generation    │  │
 │  │  - Q&A Generation        │  │
 │  │  - Answer Evaluation     │  │
-│  │  (Google Gemini)         │  │
+│  │  (Groq AI)               │  │
 │  └────────┬─────────────────┘  │
 │           │                     │
 │  ┌────────▼─────────────────┐  │
@@ -269,7 +269,7 @@ pytest --cov=research_bot --cov-report=html
 
 **Problem: "Missing required environment variables" error**
 - ✅ Ensure `.env` file exists in project root
-- ✅ Check all required variables are set: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `GEMINI_API_KEY`
+- ✅ Check all required variables are set: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `GROQ_API_KEY`
 - ✅ Restart the Flask app after updating `.env`
 
 **Problem: Search returns no results**
@@ -278,7 +278,7 @@ pytest --cov=research_bot --cov-report=html
 - ✅ Try simpler search terms
 
 **Problem: AI summaries not generating**
-- ✅ Verify `GEMINI_API_KEY` is valid
+- ✅ Verify `GROQ_API_KEY` is valid
 - ✅ Check Google AI Studio quota/limits
 - ✅ Bot falls back to basic summaries if AI unavailable
 
@@ -317,7 +317,7 @@ pytest --cov=research_bot --cov-report=html
 heroku create your-app-name
 heroku config:set TWILIO_ACCOUNT_SID=ACxxx...
 heroku config:set TWILIO_AUTH_TOKEN=xxx...
-heroku config:set GEMINI_API_KEY=xxx...
+heroku config:set GROQ_API_KEY=xxx...
 git push heroku main
 ```
 
@@ -361,7 +361,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## 🙏 Acknowledgments
 
-- [Google Gemini](https://ai.google.dev/) for powerful AI capabilities
+- [Groq](https://groq.com/) for ultra-fast AI inference
 - [Twilio](https://www.twilio.com/) for WhatsApp API
 - [Semantic Scholar](https://www.semanticscholar.org/) for academic paper search
 - [arXiv](https://arxiv.org/) for open-access research papers

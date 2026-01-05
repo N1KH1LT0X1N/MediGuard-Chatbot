@@ -97,7 +97,7 @@ Tests mock external API calls to:
 
 Mocked services:
 - Twilio WhatsApp API
-- Google Gemini API
+- Groq API
 - Semantic Scholar API
 - arXiv API
 

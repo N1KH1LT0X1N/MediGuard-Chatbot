@@ -104,6 +104,17 @@ dmypy.json
 # Cython
 cython_debug/
 
-#niks ignore
-expense_analyzer
-research-paper-bot
+# ======================
+# Custom Project Ignores
+# ======================
+
+# Sub-projects (excluded from main repo)
+/research-paper-bot/
+/expense_analyzer/
+
+# Skills documentation (internal use only)
+/.github/skills/
+
+# Local development files
+*.bak
+*.backup

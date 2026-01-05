@@ -16,24 +16,17 @@ except ImportError:
     TESSERACT_AVAILABLE = False
     print("Warning: Tesseract OCR dependencies not installed. Install with: pip install pytesseract pillow pdf2image")
 
-try:
-    import google.generativeai as genai
-    from dotenv import load_dotenv
-    load_dotenv()
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
-    GEMINI_AVAILABLE = bool(GEMINI_API_KEY)
-    if GEMINI_AVAILABLE:
-        genai.configure(api_key=GEMINI_API_KEY)
-except Exception:
-    GEMINI_AVAILABLE = False
-    print("Warning: Gemini API not available. Tesseract will be used as fallback.")
+from mediguard.utils import llm_provider
+
+LLM_AVAILABLE = llm_provider.GROQ_AVAILABLE
+if not LLM_AVAILABLE:
+    print("Warning: Groq API not available. Tesseract will be used as fallback.")
 
 
 class LabReportOCR:
     """
     Hybrid OCR engine for lab reports.
-    Uses Gemini Vision API (primary) with Tesseract OCR fallback.
+    Uses Groq Vision API (primary) with Tesseract OCR fallback.
     """
 
     def __init__(self, use_llm: bool = True):
@@ -41,18 +34,18 @@ class LabReportOCR:
         Initialize OCR engine.
 
         Args:
-            use_llm: Whether to use LLM (Gemini) for extraction (default: True)
+            use_llm: Whether to use LLM (Groq) for extraction (default: True)
         """
-        self.use_llm = use_llm and GEMINI_AVAILABLE
+        self.use_llm = use_llm and LLM_AVAILABLE
         self.tesseract_available = TESSERACT_AVAILABLE
 
         if not self.use_llm and not self.tesseract_available:
             raise RuntimeError(
-                "No OCR method available. Install Tesseract or configure Gemini API key."
+                "No OCR method available. Install Tesseract or configure Groq API key."
             )
 
         if self.use_llm:
-            print("[OK] Lab Report OCR: Gemini Vision API enabled (primary)")
+            print("[OK] Lab Report OCR: Groq Vision API enabled (primary)")
         if self.tesseract_available:
             print("[OK] Lab Report OCR: Tesseract enabled (fallback)")
 
@@ -66,7 +59,7 @@ class LabReportOCR:
         Returns:
             Dictionary with:
                 - text: Extracted text
-                - method: "gemini" or "tesseract"
+                - method: "groq" or "tesseract"
                 - metadata: Additional info
         """
         path = Path(file_path)
@@ -76,15 +69,15 @@ class LabReportOCR:
         # Try LLM first (if enabled)
         if self.use_llm:
             try:
-                print("[INFO] Attempting Gemini Vision extraction...")
+                print("[INFO] Attempting Groq Vision extraction...")
                 result = self.extract_with_llm(file_path)
                 if result and result.get("text"):
-                    print("[OK] Gemini extraction successful")
+                    print("[OK] Groq extraction successful")
                     return result
                 else:
-                    print("[WARN] Gemini returned empty result, falling back to Tesseract")
+                    print("[WARN] Groq returned empty result, falling back to Tesseract")
             except Exception as e:
-                print(f"[WARN] Gemini extraction failed: {str(e)}, falling back to Tesseract")
+                print(f"[WARN] Groq extraction failed: {str(e)}, falling back to Tesseract")
 
         # Fallback to Tesseract
         if self.tesseract_available:
@@ -100,7 +93,7 @@ class LabReportOCR:
 
     def extract_with_llm(self, file_path: str) -> Dict[str, Any]:
         """
-        Extract text using Gemini Vision API.
+        Extract text using Groq Vision API.
 
         Args:
             file_path: Path to PDF or image file
@@ -108,18 +101,17 @@ class LabReportOCR:
         Returns:
             Dictionary with extracted text and metadata
         """
-        if not GEMINI_AVAILABLE:
-            raise RuntimeError("Gemini API not configured")
+        if not LLM_AVAILABLE:
+            raise RuntimeError("Groq API not configured")
+
+        path = Path(file_path)
+        file_extension = path.suffix.lower()
+        temp_image_path = None
 
         try:
-            # Load file
-            path = Path(file_path)
-            file_extension = path.suffix.lower()
-
             # For PDFs, convert to image first
             if file_extension == '.pdf':
                 image = self.convert_pdf_to_image(file_path)
-                # Save temporarily as image for Gemini
                 import tempfile
                 temp_image_path = tempfile.mktemp(suffix='.png')
                 image.save(temp_image_path)
@@ -127,69 +119,41 @@ class LabReportOCR:
             else:
                 file_to_process = file_path
 
-            # Use Gemini Vision API
-            model = genai.GenerativeModel(GEMINI_MODEL)
-
-            # Determine MIME type
-            if file_extension == '.pdf':
-                mime_type = "image/png"  # PDF converted to PNG
-            elif file_extension in ['.jpg', '.jpeg']:
-                mime_type = "image/jpeg"
-            elif file_extension == '.png':
-                mime_type = "image/png"
-            else:
-                mime_type = "image/png"  # Default
-
-            # Read image
-            import base64
-            with open(file_to_process, 'rb') as f:
-                image_data = f.read()
-
             # Create prompt for text extraction
-            prompt = """
-            Extract all text from this lab report image. 
-            Return the raw text content exactly as it appears, preserving:
-            - All biomarker names and values
-            - Units of measurement
-            - Numbers and decimal values
-            - Table structures if present
-            
-            Return only the extracted text, no explanations.
-            """
+            prompt = """Extract all text from this lab report image.
 
-            # Generate content with image
-            # Gemini Vision API accepts image as part of content list
-            # (genai is already imported at module level)
-            
-            # Create image part
-            image_part = {
-                "mime_type": mime_type,
-                "data": image_data
-            }
-            
-            # Generate content
-            response = model.generate_content([prompt, image_part])
+RULES:
+- Return the raw text content exactly as it appears
+- Preserve all biomarker names and values
+- Preserve units of measurement
+- Preserve numbers and decimal values
+- Preserve table structures if present
 
-            # Cleanup temp file if created
-            if file_extension == '.pdf' and 'temp_image_path' in locals():
-                try:
-                    os.unlink(temp_image_path)
-                except:
-                    pass
+Return only the extracted text, no explanations."""
 
-            extracted_text = response.text if hasattr(response, 'text') else ""
+            # Use Groq Vision via llm_provider
+            extracted_text = llm_provider.generate_with_image(prompt, file_to_process)
 
             return {
-                "text": extracted_text,
-                "method": "gemini",
+                "text": extracted_text or "",
+                "method": "groq",
                 "metadata": {
-                    "model": GEMINI_MODEL,
+                    "model": llm_provider.GROQ_VISION_MODEL,
                     "file_type": file_extension,
                 }
             }
 
         except Exception as e:
-            raise RuntimeError(f"Gemini extraction failed: {str(e)}")
+            raise RuntimeError(f"Groq extraction failed: {str(e)}")
+
+        finally:
+            # Cleanup temp file
+            if temp_image_path:
+                try:
+                    os.unlink(temp_image_path)
+                except OSError:
+                    pass
+
 
     def extract_with_tesseract(self, file_path: str) -> Dict[str, Any]:
         """

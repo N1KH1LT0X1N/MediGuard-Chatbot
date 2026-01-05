@@ -8,17 +8,9 @@ import re
 import json
 from typing import Dict, Optional, List, Tuple, Any
 
-try:
-    import google.generativeai as genai
-    from dotenv import load_dotenv
-    load_dotenv()
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
-    GEMINI_AVAILABLE = bool(GEMINI_API_KEY)
-    if GEMINI_AVAILABLE:
-        genai.configure(api_key=GEMINI_API_KEY)
-except Exception:
-    GEMINI_AVAILABLE = False
+from mediguard.utils import llm_provider
+
+LLM_AVAILABLE = llm_provider.GROQ_AVAILABLE
 
 from mediguard.parsers.input_parser import BiomarkerInputParser
 
@@ -100,7 +92,7 @@ class BiomarkerExtractor:
         Args:
             use_llm: Whether to use LLM for parsing (default: True)
         """
-        self.use_llm = use_llm and GEMINI_AVAILABLE
+        self.use_llm = use_llm and LLM_AVAILABLE
         self.parser = BiomarkerInputParser()
 
     def extract_from_text(self, ocr_text: str) -> Tuple[Optional[Dict[str, float]], List[str]]:
@@ -144,7 +136,7 @@ class BiomarkerExtractor:
 
     def extract_with_llm(self, ocr_text: str) -> Optional[Dict[str, float]]:
         """
-        Extract biomarkers using Gemini LLM.
+        Extract biomarkers using Groq LLM.
 
         Args:
             ocr_text: OCR-extracted text
@@ -152,12 +144,10 @@ class BiomarkerExtractor:
         Returns:
             Dictionary of biomarker values or None
         """
-        if not GEMINI_AVAILABLE:
-            raise RuntimeError("Gemini API not configured")
+        if not LLM_AVAILABLE:
+            raise RuntimeError("Groq API not configured")
 
         try:
-            model = genai.GenerativeModel(GEMINI_MODEL)
-
             # Create comprehensive prompt
             prompt = f"""Extract all biomarker values from this lab report text. Return ONLY valid JSON with all 24 biomarkers.
 
@@ -188,7 +178,7 @@ Required biomarkers:
 24. lactate (LAC, Lactate)
 
 Lab Report Text:
-{ocr_text[:4000]}  # Limit to avoid token limits
+{ocr_text[:4000]}
 
 Return JSON format:
 {{
@@ -205,8 +195,14 @@ Rules:
 - Return ONLY the JSON object, no explanations
 """
 
-            response = model.generate_content(prompt)
-            response_text = response.text.strip()
+            # Use Groq via llm_provider
+            response_text = llm_provider.generate_text(prompt, temperature=0.3)
+            
+            if not response_text:
+                print("[WARN] LLM returned empty response")
+                return None
+            
+            response_text = response_text.strip()
 
             # Extract JSON from response (may have markdown code blocks)
             json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
@@ -239,6 +235,7 @@ Rules:
         except Exception as e:
             print(f"[WARN] LLM extraction error: {str(e)}")
             return None
+
 
     def extract_with_regex(self, ocr_text: str) -> Optional[Dict[str, float]]:
         """
